@@ -1,30 +1,31 @@
-global.expect = require('expect');
+const { JSDOM } = require("jsdom");
+const babel = require("babel-core");
+const path = require("path");
 
-const babel = require('babel-core');
-const jsdom = require('jsdom');
-const path = require('path');
-
-before(function(done) {
+before(function (done) {
   const babelResult = babel.transformFileSync(
-    path.resolve(__dirname, '..', 'index.js'), {
-      presets: ['es2015']
+    path.resolve(__dirname, "../index.js"),
+    {
+      presets: ["env"],
     }
   );
 
-  const html = path.resolve(__dirname, '..', 'index.html')
-
-  jsdom.env(html, [], {
-    src: babelResult.code,
-    virtualConsole: jsdom.createVirtualConsole().sendTo(console)
-  }, (err, window) => {
-    if (err) {
-      return done(err);
-    }
-
-    Object.keys(window).forEach(key => {
-      global[key] = window[key];
-    });
-
-    return done();
-  });
+  const htmlPath = path.resolve(__dirname, "../index.html");
+  JSDOM.fromFile(htmlPath, {
+    runScripts: "dangerously",
+    resources: "usable",
+  })
+    .then((dom) => {
+      dom.window.localStorage = {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+        clear: () => {},
+      };
+      global.window = dom.window;
+      global.document = dom.window.document;
+      global.navigator = dom.window.navigator;
+      done();
+    })
+    .catch((err) => done(err));
 });
